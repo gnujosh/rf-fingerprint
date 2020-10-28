@@ -7,29 +7,24 @@
 # -----------------------------------------------------------------------------------
 
 """
-A script for training and testing a MarconiNet Classifier Model (MCM).
+A script for training a MarconiNet Classifier Model (MCM).
 """
 
 # standard library imports
 import configargparse
 import os
-import random
-import logging
-from datetime import datetime
 import json
+import urllib.parse
+from io import BytesIO
 
 # third party imports
+import boto3
 import numpy as np
 import tensorflow as tf
 import tensorflow.keras as keras
 from tensorflow.keras.utils import to_categorical
 from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.callbacks import (
-    ModelCheckpoint,
-    LearningRateScheduler,
-    ReduceLROnPlateau,
-    EarlyStopping,
-)
+from tensorflow.keras.callbacks import ModelCheckpoint, LearningRateScheduler, ReduceLROnPlateau, EarlyStopping
 
 # local repo imports
 from .gpu_scheduler import reserve_gpu_resources, release_gpu_resources
@@ -128,7 +123,6 @@ def parse_args(arguments=None):
         return parser.parse_args()
     else:
         return parser.parse_args(arguments)
-    tf.random.set_seed(seed)
 
 def train(args, logger):
     # model parameters
@@ -140,7 +134,29 @@ def train(args, logger):
     # load rffp wifi dataset
     logger.info("starting data preparation.")
     logger.info(f"loading data from {args.data_path}")
-    data = np.load(args.data_path)
+
+    if args.data_path.startswith('aws') or args.data_path.startswith('https'):
+        if args.data_path.startswith('aws'):
+            url = urllib.parse.urlparse(args.data_path)
+            aws_access_key_id, aws_secret_access_key, region_name = url.username, url.password, url.hostname
+            split_ind = url.path[1:].find('/') + 1
+            bucket_name, rf_data_file = url.path[1:split_ind], url.path[split_ind+1:]
+        elif args.data_path.startswith('https'):
+            url = urllib.parse.urlparse(args.data_path)
+            aws_access_key_id, aws_secret_access_key, rf_data_file = url.username, url.password, url.path[1:]
+            split_ind = url.hostname.find('.')
+            split_ind2 = url.hostname.find('.', split_ind + 1)
+            bucket_name = url.hostname[:split_ind]
+            region_name = url.hostname[split_ind + 4:split_ind2]
+
+        session = boto3.Session(aws_access_key_id=aws_access_key_id,
+                                aws_secret_access_key=aws_secret_access_key,
+                                region_name=region_name)
+
+        obj = session.client('s3').get_object(Bucket=bucket_name, Key=rf_data_file)
+        data = np.load(BytesIO(obj['Body'].read()))
+    else:
+        data = np.load(args.data_path)
     x_train = data['x_train']
     y_train = data['y_train']
     x_val = data['x_val']
@@ -211,8 +227,10 @@ def train(args, logger):
     if not os.path.isdir(args.save_dir):
         os.makedirs(save_dir)
 
-    model_filename = args.model_name
-    model_name = f"{model.name}.{results_id}.h5"
+    if args.model_filename:
+        model_name = args.model_filename
+    else:
+        model_name = f"{model.name}.{results_id}.h5"
     filepath = os.path.join(args.save_dir, model_name)
     metrics_file = f"{model.name}_training_metrics.{results_id}.json"
     metrics_filepath = os.path.join(args.metrics_dir, metrics_file)
