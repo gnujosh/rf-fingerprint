@@ -298,7 +298,7 @@ if __name__ == "__main__":
     # reserve gpu resources if running on a mabnunxlssep server. You can comment this section
     # of code out if you are not running on a mabnunxlssep server.
     claimed_gpus, status_files = initialize_tf_gpus(args.vis_gpus, logger)
-    set_seed(args.seed)
+    set_seed(args.seed, logger)
     try:
         train(args, logger)
     finally:
