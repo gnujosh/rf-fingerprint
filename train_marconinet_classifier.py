@@ -120,12 +120,12 @@ def parse_args(arguments=None):
     )
     parser.add_argument(
         "--train",
-        default=os.environ.get('SM_TRAIN')
+        default=os.environ.get('SM_TRAIN'),
         help="Path to training npz data file"
     )
     parser.add_argument(
         "--validation",
-        default=os.environ.get('SM_VALIDATION')
+        default=os.environ.get('SM_VALIDATION'),
         help="Path to validation npz data file"
     )
     parser.add_argument(
