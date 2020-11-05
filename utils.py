@@ -90,7 +90,7 @@ def load_data(data_path):
         data = np.load(BytesIO(get_bytes_from_s3_bucket(data_path)))
     else:
         if os.path.isdir(data_path):
-            print(file_path)
+            print(data_path)
             for file_path in glob.glob(os.path.join(data_path, '*.npz')):
                 data_path = os.path.join(data_path, file_path)
                 print(file_path)
