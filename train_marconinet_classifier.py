@@ -17,6 +17,12 @@ import json
 import urllib.parse
 from io import BytesIO
 
+print(os.listdir('.'))
+print(os.listdir('/opt/ml/input'))
+print(os.listdir('/opt/ml/input/data/'))
+print(os.listdir('/opt/ml/input/data/train'))
+print(os.environ['SM_CHANNEL_TRAIN'])
+
 # third party imports
 import numpy as np
 import tensorflow as tf
