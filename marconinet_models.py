@@ -12,9 +12,9 @@
 import tensorflow.keras as keras
 
 # local application imports
-from .marconinet_blocks import sigDCCLayer
-from .marconinet_blocks import sigDCCResBlockStack
-from .marconinet_blocks import sigConv_and_pooling_block
+from marconinet_blocks import sigDCCLayer
+from marconinet_blocks import sigDCCResBlockStack
+from marconinet_blocks import sigConv_and_pooling_block
 
 
 def get_marconinet_reconstruction_model(

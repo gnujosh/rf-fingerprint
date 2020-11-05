@@ -16,31 +16,30 @@ import urllib.parse
 from io import BytesIO
 
 # third party imports
-import boto3
 import sklearn.metrics
-import configargparse
+import argparse
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras.utils import to_categorical
 
 # local repo imports
-from .gpu_scheduler import reserve_gpu_resources, release_gpu_resources
-from .utils import initialize_tf_gpus, get_logger, set_seed, get_bytes_from_s3_bucket, load_model_from_s3_bucket
+from gpu_scheduler import reserve_gpu_resources, release_gpu_resources
+from utils import initialize_tf_gpus, get_logger, set_seed, get_bytes_from_s3_bucket, load_model_from_s3_bucket
 
 
 # command line arguments
 def parse_args(arguments=None):
     """Get commandline options."""
-    parser = configargparse.ArgParser(
+    parser = gargparse.ArgParser(
         description=__doc__,
         formatter_class=configargparse.ArgumentDefaultsRawHelpFormatter,
     )
-    parser.add_argument(
-        "--config-file",
-        type=str,
-        is_config_file=True,
-        help="path to config file. cmdline args override config file options.",
-    )
+#     parser.add_argument(
+#         "--config-file",
+#         type=str,
+#         is_config_file=True,
+#         help="path to config file. cmdline args override config file options.",
+#     )
     parser.add_argument(
         "--save_dir", default=os.getcwd(), type=str, help="where to save model"
     )
@@ -109,8 +108,8 @@ def parse_args(arguments=None):
         help="launch browser to show training metrics",
     )
     parser.add_argument(
-        "--data_path",
-        help="Path to npz data file"
+        "--test",
+        help="Path to test data npz file"
     )
     parser.add_argument(
         "--model_filename",
@@ -125,15 +124,15 @@ def test(args, logger):
 
     # load rffp wifi dataset
     logger.info("starting data preparation.")
-    logger.info(f"loading data from {args.data_path}")
+    logger.info(f"loading data from {args.test}")
 
-    if args.data_path.startswith('aws') or args.data_path.startswith('https'):
-        data = np.load(BytesIO(get_bytes_from_s3_bucket(args.data_path)))
+    if args.test.startswith('aws') or args.test.startswith('https'):
+        data = np.load(BytesIO(get_bytes_from_s3_bucket(args.test)))
     else:
-        data = np.load(args.data_path)
+        data = np.load(args.test)
 
-    x_test = data['x_test']
-    y_test = data['y_test']
+    x_test = data['x']
+    y_test = data['y]
     logger.info(f"testing dataset size:     {len(y_test)}")
 
     # reshape data for input into the MCM

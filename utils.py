@@ -9,7 +9,7 @@ import numpy as np
 import tensorflow as tf
 
 # local repo imports
-from .gpu_scheduler import reserve_gpu_resources
+from gpu_scheduler import reserve_gpu_resources
 
 def get_logger():
     # setup logging

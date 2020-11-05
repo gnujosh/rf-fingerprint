@@ -11,14 +11,13 @@ A script for training a MarconiNet Classifier Model (MCM).
 """
 
 # standard library imports
-import configargparse
+import argparse
 import os
 import json
 import urllib.parse
 from io import BytesIO
 
 # third party imports
-import boto3
 import numpy as np
 import tensorflow as tf
 import tensorflow.keras as keras
@@ -27,23 +26,23 @@ from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.callbacks import ModelCheckpoint, LearningRateScheduler, ReduceLROnPlateau, EarlyStopping
 
 # local repo imports
-from .gpu_scheduler import reserve_gpu_resources, release_gpu_resources
-from .marconinet_models import get_marconinet_classifier
-from .utils import initialize_tf_gpus, get_logger, set_seed, get_bytes_from_s3_bucket
+from gpu_scheduler import reserve_gpu_resources, release_gpu_resources
+from marconinet_models import get_marconinet_classifier
+from utils import initialize_tf_gpus, get_logger, set_seed, get_bytes_from_s3_bucket
 
 # comdand line arguments
 def parse_args(arguments=None):
     """Get commandline options."""
-    parser = configargparse.ArgParser(
+    parser = argparse.ArgumentParser(
         description=__doc__,
-        formatter_class=configargparse.ArgumentDefaultsRawHelpFormatter,
+        formatter_class=argparse.ArgumentDefaultsRawHelpFormatter,
     )
-    parser.add_argument(
-        "--config-file",
-        type=str,
-        is_config_file=True,
-        help="path to config file. cmdline args override config file options.",
-    )
+#     parser.add_argument(
+#         "--config-file",
+#         type=str,
+#         is_config_file=True,
+#         help="path to config file. cmdline args override config file options.",
+#     )
     parser.add_argument(
         "--save_dir", default=os.getcwd(), type=str, help="where to save model"
     )
@@ -112,8 +111,14 @@ def parse_args(arguments=None):
         help="launch browser to show training metrics",
     )
     parser.add_argument(
-        "--data_path",
-        help="Path to npz data file"
+        "--train",
+        #default=os.environ['SM_TRAIN'] load from env variable
+        help="Path to training npz data file"
+    )
+    parser.add_argument(
+        "--validation",
+        #default=default=os.environ['SM_VALIDATION'] load from env variable
+        help="Path to validation npz data file"
     )
     parser.add_argument(
         "--model_filename",
@@ -133,24 +138,27 @@ def train(args, logger):
 
     # load rffp wifi dataset
     logger.info("starting data preparation.")
-    logger.info(f"loading data from {args.data_path}")
+    logger.info(f"loading training data from {args.train}")
+    logger.info(f"loading validation data from {args.validation}")
 
-    if args.data_path.startswith('aws') or args.data_path.startswith('https'):
-        data = np.load(BytesIO(get_bytes_from_s3_bucket(args.data_path)))
+    if args.train.startswith('aws') or args.train.startswith('https'):
+        train_data = np.load(BytesIO(get_bytes_from_s3_bucket(args.train)))
     else:
-        data = np.load(args.data_path)
+        train_data = np.load(args.train)
 
-    x_train = data['x_train']
-    y_train = data['y_train']
-    x_val = data['x_val']
-    y_val = data['y_val']
-    x_test = data['x_test']
-    y_test = data['y_test']
+    if args.validation.startswith('aws') or args.validation.startswith('https'):
+        val_data = np.load(BytesIO(get_bytes_from_s3_bucket(args.validation)))
+    else:
+        val_data = np.load(args.validation)
+
+    x_train = train_data['x']
+    y_train = train_data['y']
+    x_val = val_data['x']
+    y_val = val_data['y']
     classes = np.unique(y_train)
     n_classes = len(classes)
     logger.info(f"training dataset size:    {len(y_train)}")
     logger.info(f"validation dataset size:  {len(y_val)}")
-    logger.info(f"testing dataset size:     {len(y_test)}")
     logger.info(f"classes: {classes}")
     logger.info(f"n_classes: {n_classes}")
 
@@ -173,10 +181,8 @@ def train(args, logger):
 
     x_train_mcm = sigIQ(x_train)
     x_val_mcm = sigIQ(x_val)
-    x_test_mcm = sigIQ(x_test)
     y_train_ohe = to_categorical(y_train)
     y_val_ohe = to_categorical(y_val)
-    y_test_ohe = to_categorical(y_test)
 
     # Shape information
     input_shape = x_train_mcm.shape[1:]
@@ -282,15 +288,15 @@ def train(args, logger):
     with open(metrics_filepath, "w") as file:
         file.write(json.dumps(hist.history))
 
-    # test best model
-    logger.info("evaluating on test data.")
-    bestmodel = keras.models.load_model(filepath)
-    test_results = bestmodel.evaluate(
-        x_test_mcm,
-        y_test_ohe,
-        batch_size=args.batch_size,
-    )
-    logger.info(f"test results: {str(test_results)}")
+#     # test best model
+#     logger.info("evaluating on test data.")
+#     bestmodel = keras.models.load_model(filepath)
+#     test_results = bestmodel.evaluate(
+#         x_test_mcm,
+#         y_test_ohe,
+#         batch_size=args.batch_size,
+#     )
+#     logger.info(f"test results: {str(test_results)}")
 
 if __name__ == "__main__":
 
