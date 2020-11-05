@@ -11,7 +11,7 @@ A script for training a MarconiNet Classifier Model (MCM).
 """
 
 # standard library imports
-import configargparse
+import argparse
 import os
 import json
 import urllib.parse
@@ -34,16 +34,16 @@ from .utils import initialize_tf_gpus, get_logger, set_seed
 # comdand line arguments
 def parse_args(arguments=None):
     """Get commandline options."""
-    parser = configargparse.ArgParser(
+    parser = argparse.ArgumentParser(
         description=__doc__,
-        formatter_class=configargparse.ArgumentDefaultsRawHelpFormatter,
+        formatter_class=argparse.ArgumentDefaultsRawHelpFormatter,
     )
-    parser.add_argument(
-        "--config-file",
-        type=str,
-        is_config_file=True,
-        help="path to config file. cmdline args override config file options.",
-    )
+#     parser.add_argument(
+#         "--config-file",
+#         type=str,
+#         is_config_file=True,
+#         help="path to config file. cmdline args override config file options.",
+#     )
     parser.add_argument(
         "--save_dir", default=os.getcwd(), type=str, help="where to save model"
     )
