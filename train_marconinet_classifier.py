@@ -33,7 +33,8 @@ def parse_args(arguments=None):
     """Get commandline options."""
     parser = argparse.ArgumentParser(
         description=__doc__,
-        formatter_class=argparse.ArgumentDefaultsRawHelpFormatter,
+        #formatter_class=argparse.ArgumentDefaultsRawHelpFormatter,
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
 #     parser.add_argument(
 #         "--config-file",

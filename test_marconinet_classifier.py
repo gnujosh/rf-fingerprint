@@ -12,8 +12,6 @@ A script for testing a MarconiNet Classifier Model (MCM).
 
 # standard library imports
 import os
-import urllib.parse
-from io import BytesIO
 
 # third party imports
 import sklearn.metrics
@@ -24,15 +22,16 @@ from tensorflow.keras.utils import to_categorical
 
 # local repo imports
 from gpu_scheduler import reserve_gpu_resources, release_gpu_resources
-from utils import initialize_tf_gpus, get_logger, set_seed, get_bytes_from_s3_bucket, load_model_from_s3_bucket
+from utils import initialize_tf_gpus, get_logger, set_seed, load_data, load_model_from_s3_bucket
 
 
 # command line arguments
 def parse_args(arguments=None):
     """Get commandline options."""
-    parser = gargparse.ArgParser(
+    parser = argparse.ArgParser(
         description=__doc__,
-        formatter_class=configargparse.ArgumentDefaultsRawHelpFormatter,
+        #formatter_class=configargparse.ArgumentDefaultsRawHelpFormatter,
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
 #     parser.add_argument(
 #         "--config-file",
@@ -126,11 +125,7 @@ def test(args, logger):
     logger.info("starting data preparation.")
     logger.info(f"loading data from {args.test}")
 
-    if args.test.startswith('aws') or args.test.startswith('https'):
-        data = np.load(BytesIO(get_bytes_from_s3_bucket(args.test)))
-    else:
-        data = np.load(args.test)
-
+    data = load_data(args.test)
     x_test = data['x']
     y_test = data['y]
     logger.info(f"testing dataset size:     {len(y_test)}")
