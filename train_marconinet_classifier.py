@@ -18,10 +18,12 @@ import urllib.parse
 from io import BytesIO
 
 print(os.listdir('.'))
+print(os.listdir('..'))
+print(os.getcwd())
 print(os.listdir('/opt/ml/input'))
 print(os.listdir('/opt/ml/input/data/'))
 print(os.listdir('/opt/ml/input/data/train'))
-print(os.environ['SM_CHANNEL_TRAIN'])
+print(os.environ.get('SM_CHANNEL_TRAIN'))
 
 # third party imports
 import numpy as np
@@ -118,12 +120,12 @@ def parse_args(arguments=None):
     )
     parser.add_argument(
         "--train",
-        #default=os.environ['SM_TRAIN'] load from env variable
+        default=os.environ.get('SM_TRAIN')
         help="Path to training npz data file"
     )
     parser.add_argument(
         "--validation",
-        #default=default=os.environ['SM_VALIDATION'] load from env variable
+        default=os.environ.get('SM_VALIDATION')
         help="Path to validation npz data file"
     )
     parser.add_argument(
@@ -163,8 +165,8 @@ def train(args, logger):
     y_val = val_data['y']
     classes = np.unique(y_train)
     n_classes = len(classes)
-    logger.info(f"training dataset size:    {len(y_train)}")
-    logger.info(f"validation dataset size:  {len(y_val)}")
+    logger.info(f"training dataset size:   {len(y_train)}")
+    logger.info(f"validation dataset size: {len(y_val)}")
     logger.info(f"classes: {classes}")
     logger.info(f"n_classes: {n_classes}")
 
