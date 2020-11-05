@@ -14,16 +14,6 @@ A script for training a MarconiNet Classifier Model (MCM).
 import argparse
 import os
 import json
-import urllib.parse
-from io import BytesIO
-
-print(os.listdir('.'))
-print(os.listdir('..'))
-print(os.getcwd())
-print(os.listdir('/opt/ml/input'))
-print(os.listdir('/opt/ml/input/data/'))
-print(os.listdir('/opt/ml/input/data/train'))
-print(os.environ.get('SM_CHANNEL_TRAIN'))
 
 # third party imports
 import numpy as np
@@ -36,7 +26,7 @@ from tensorflow.keras.callbacks import ModelCheckpoint, LearningRateScheduler, R
 # local repo imports
 from gpu_scheduler import reserve_gpu_resources, release_gpu_resources
 from marconinet_models import get_marconinet_classifier
-from utils import initialize_tf_gpus, get_logger, set_seed, get_bytes_from_s3_bucket
+from utils import initialize_tf_gpus, get_logger, set_seed, load_data
 
 # comdand line arguments
 def parse_args(arguments=None):
@@ -149,16 +139,9 @@ def train(args, logger):
     logger.info(f"loading training data from {args.train}")
     logger.info(f"loading validation data from {args.validation}")
 
-    if args.train.startswith('aws') or args.train.startswith('https'):
-        train_data = np.load(BytesIO(get_bytes_from_s3_bucket(args.train)))
-    else:
-        train_data = np.load(args.train)
-
-    if args.validation.startswith('aws') or args.validation.startswith('https'):
-        val_data = np.load(BytesIO(get_bytes_from_s3_bucket(args.validation)))
-    else:
-        val_data = np.load(args.validation)
-
+    train_data = load_data(args.train)
+    val_data = load_data(args.validation)
+        
     x_train = train_data['x']
     y_train = train_data['y']
     x_val = val_data['x']

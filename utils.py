@@ -1,7 +1,9 @@
 import os
+import glob
 import logging
 import urllib.parse
 import contextlib
+from io import Bytes
 
 import boto3
 import h5py
@@ -82,6 +84,17 @@ def get_bytes_from_s3_bucket(filename):
 
     obj = session.client('s3').get_object(Bucket=bucket_name, Key=key_name)
     return obj['Body'].read()
+
+def load_data(data_path):
+    if data_path.startswith('aws') or data_path.startswith('https'):
+        data = np.load(BytesIO(get_bytes_from_s3_bucket(data_path)))
+    else:
+        if os.path.isdir(data_path):
+            for file in glob.glob(os.path.join(data_path, '*.npz')):
+                data_path = os.path.join(data_path, file_path)
+                break
+        data = np.load(data_path)
+    return data
 
 def load_model_from_s3_bucket(filename):
     body = get_bytes_from_s3_bucket(filename)
