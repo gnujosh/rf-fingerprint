@@ -3,7 +3,7 @@ import glob
 import logging
 import urllib.parse
 import contextlib
-from io import Bytes
+from io import BytesIO
 
 import boto3
 import h5py
