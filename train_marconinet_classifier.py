@@ -43,7 +43,7 @@ def parse_args(arguments=None):
 #         help="path to config file. cmdline args override config file options.",
 #     )
     parser.add_argument(
-        "--save_dir", default=os.getcwd(), type=str, help="where to save model"
+        "--model_dir", default=os.getcwd(), type=str, help="where to save model"
     )
     parser.add_argument(
         "--metrics_dir",
@@ -205,14 +205,14 @@ def train(args, logger):
     results_id = rb_string + "_seed_{}".format(args.seed)
     if not os.path.isdir(args.metrics_dir):
         os.makedirs(args.metrics_dir)
-    if not os.path.isdir(args.save_dir):
-        os.makedirs(save_dir)
+    if not os.path.isdir(args.model_dir):
+        os.makedirs(args.model_dir)
 
     if args.model_filename:
         model_name = args.model_filename
     else:
         model_name = f"{model.name}.{results_id}.h5"
-    filepath = os.path.join(args.save_dir, model_name)
+    filepath = os.path.join(args.model_dir, model_name)
     metrics_file = f"{model.name}_training_metrics.{results_id}.json"
     metrics_filepath = os.path.join(args.metrics_dir, metrics_file)
     logger.info(f"training metrics file: {metrics_filepath}")
