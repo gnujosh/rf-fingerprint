@@ -1,5 +1,10 @@
 import os
 import logging
+import urllib.parse
+import contextlib
+
+import boto3
+import h5py
 import numpy as np
 import tensorflow as tf
 
@@ -53,3 +58,44 @@ def set_seed(seed, logger):
     np.random.seed(seed)
     tf.random.set_seed(seed)
 
+def get_bytes_from_s3_bucket(filename):
+    # Get body bytes of object in s3 bucket. Supports formats like:
+    # aws://{aws_access_key_id}:{aws_secret_access_key}@{region_name}/{bucket_name}/{model_file_name}
+    # https://{aws_access_key_id}:{aws_secret_access_key}@{bucket_name}.s3-{region_name}.amazonaws.com/{module_file_name}
+
+    url = urllib.parse.urlparse(filename)
+    if filename.startswith('aws'):
+        aws_access_key_id, aws_secret_access_key, region_name = url.username, url.password, url.hostname
+        split_ind = url.path[1:].find('/') + 1
+        bucket_name, key_name = url.path[1:split_ind], url.path[split_ind+1:]
+    elif filename.startswith('https'):
+        aws_access_key_id, aws_secret_access_key, key_name = url.username, url.password, url.path[1:]
+        split_ind = url.hostname.find('.')
+        split_ind2 = url.hostname.find('.', split_ind + 1)
+        bucket_name = url.hostname[:split_ind]
+        region_name = url.hostname[split_ind + 4:split_ind2]
+
+    # Load object from bucket
+    session = boto3.Session(aws_access_key_id=aws_access_key_id,
+                            aws_secret_access_key=aws_secret_access_key,
+                            region_name=region_name)
+
+    obj = session.client('s3').get_object(Bucket=bucket_name, Key=key_name)
+    return obj['Body'].read()
+
+def load_model_from_s3_bucket(filename):
+    body = get_bytes_from_s3_bucket(filename)
+    # Fancy way to load data into a memory-backed h5 file instead of copying 
+    # file from bucket to local storage.
+    file_access_property_list = h5py.h5p.create(h5py.h5p.FILE_ACCESS)
+    file_access_property_list.set_fapl_core(backing_store=False)
+    file_access_property_list.set_file_image(body)
+
+    file_id_args = {'fapl': file_access_property_list, 'flags': h5py.h5f.ACC_RDONLY, 'name': b'tmp'} # 'name' doesn't matter
+    h5_file_args = {'backing_store': False, 'driver': 'core', 'mode': 'r'}
+
+    with contextlib.closing(h5py.h5f.open(**file_id_args)) as file_id:
+        with h5py.File(file_id, **h5_file_args) as h5_file:
+            model = tf.keras.models.load_model(h5_file)
+
+    return model

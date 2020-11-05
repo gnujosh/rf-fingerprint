@@ -29,7 +29,7 @@ from tensorflow.keras.callbacks import ModelCheckpoint, LearningRateScheduler, R
 # local repo imports
 from .gpu_scheduler import reserve_gpu_resources, release_gpu_resources
 from .marconinet_models import get_marconinet_classifier
-from .utils import initialize_tf_gpus, get_logger, set_seed
+from .utils import initialize_tf_gpus, get_logger, set_seed, get_bytes_from_s3_bucket
 
 # comdand line arguments
 def parse_args(arguments=None):
@@ -136,27 +136,10 @@ def train(args, logger):
     logger.info(f"loading data from {args.data_path}")
 
     if args.data_path.startswith('aws') or args.data_path.startswith('https'):
-        if args.data_path.startswith('aws'):
-            url = urllib.parse.urlparse(args.data_path)
-            aws_access_key_id, aws_secret_access_key, region_name = url.username, url.password, url.hostname
-            split_ind = url.path[1:].find('/') + 1
-            bucket_name, rf_data_file = url.path[1:split_ind], url.path[split_ind+1:]
-        elif args.data_path.startswith('https'):
-            url = urllib.parse.urlparse(args.data_path)
-            aws_access_key_id, aws_secret_access_key, rf_data_file = url.username, url.password, url.path[1:]
-            split_ind = url.hostname.find('.')
-            split_ind2 = url.hostname.find('.', split_ind + 1)
-            bucket_name = url.hostname[:split_ind]
-            region_name = url.hostname[split_ind + 4:split_ind2]
-
-        session = boto3.Session(aws_access_key_id=aws_access_key_id,
-                                aws_secret_access_key=aws_secret_access_key,
-                                region_name=region_name)
-
-        obj = session.client('s3').get_object(Bucket=bucket_name, Key=rf_data_file)
-        data = np.load(BytesIO(obj['Body'].read()))
+        data = np.load(BytesIO(get_bytes_from_s3_bucket(args.data_path)))
     else:
         data = np.load(args.data_path)
+
     x_train = data['x_train']
     y_train = data['y_train']
     x_val = data['x_val']
@@ -308,33 +291,6 @@ def train(args, logger):
         batch_size=args.batch_size,
     )
     logger.info(f"test results: {str(test_results)}")
-
-    # plot training metrics
-    from bokeh.plotting import figure, output_file, show
-    from bokeh.layouts import row
-    output_file(f"{model.name}_training_metrics_plots.{results_id}.html")
-    train_color = "blue"
-    val_color = "orange"
-    epochs = np.arange(1,len(hist.history["loss"])+1)
-    tloss = hist.history["loss"]
-    vloss = hist.history["val_loss"]
-    tacc = hist.history["accuracy"]
-    vacc = hist.history["val_accuracy"]
-    lr = hist.history["lr"]
-    # loss plot
-    ploss = figure(title="Loss")
-    ploss.line(epochs, tloss, line_color=train_color, legend_label="train")
-    ploss.line(epochs, vloss, line_color=val_color, legend_label="val")
-    # accuracy plot
-    pacc = figure(title="Accuracy")
-    pacc.line(epochs, tacc, line_color=train_color, legend_label="train")
-    pacc.line(epochs, vacc, line_color=val_color, legend_label="val")
-    # learning rate plot
-    plr = figure(title="Learning Rate")
-    plr.line(epochs, lr, line_color=train_color)
-    r = row(ploss, pacc, plr)
-    if args.plot_training_metrics:
-        show(r)
 
 if __name__ == "__main__":
 

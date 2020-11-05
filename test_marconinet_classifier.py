@@ -11,18 +11,21 @@ A script for testing a MarconiNet Classifier Model (MCM).
 """
 
 # standard library imports
-import configargparse
 import os
+import urllib.parse
+from io import BytesIO
 
 # third party imports
+import boto3
+import sklearn.metrics
+import configargparse
 import numpy as np
 import tensorflow as tf
-import tensorflow.keras as keras
 from tensorflow.keras.utils import to_categorical
 
 # local repo imports
 from .gpu_scheduler import reserve_gpu_resources, release_gpu_resources
-from .utils import initialize_tf_gpus, get_logger, set_seed
+from .utils import initialize_tf_gpus, get_logger, set_seed, get_bytes_from_s3_bucket, load_model_from_s3_bucket
 
 
 # command line arguments
@@ -123,7 +126,12 @@ def test(args, logger):
     # load rffp wifi dataset
     logger.info("starting data preparation.")
     logger.info(f"loading data from {args.data_path}")
-    data = np.load(args.data_path)
+
+    if args.data_path.startswith('aws') or args.data_path.startswith('https'):
+        data = np.load(BytesIO(get_bytes_from_s3_bucket(args.data_path)))
+    else:
+        data = np.load(args.data_path)
+
     x_test = data['x_test']
     y_test = data['y_test']
     logger.info(f"testing dataset size:     {len(y_test)}")
@@ -148,16 +156,22 @@ def test(args, logger):
     x_test_mcm = sigIQ(x_test)
     y_test_ohe = to_categorical(y_test)
 
-    model = keras.models.load_model(os.path.join(args.save_dir, args.model_filename))
+    logger.info(f"loading model from {args.model_filename}.")
+    if args.model_filename.startswith('aws') or args.model_filename.startswith('https'):
+        model = load_model_from_s3_bucket(args.model_filename)
+    else:
+        model = tf.keras.models.load_model(os.path.join(args.save_dir, args.model_filename))
 
-    # test best model
+    # test saved model
     logger.info("evaluating on test data.")
-    test_results = model.evaluate(
-        x_test_mcm,
-        y_test_ohe,
-        batch_size=args.batch_size,
-    )
-    logger.info(f"test results: {str(test_results)}")
+    test_results = model.predict(x_test_mcm, batch_size=args.batch_size)
+
+    y_pred = np.argmax(test_results, 1)
+    acc = np.sum(y_pred == y_test) / len(y_test)
+
+    return sklearn.metrics.confusion_matrix(y_test, y_pred), acc
+
+    #logger.info(f"test results: {str(test_results)}")
 
 
 if __name__ == "__main__":
