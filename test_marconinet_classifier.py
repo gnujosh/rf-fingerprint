@@ -108,6 +108,7 @@ def parse_args(arguments=None):
     )
     parser.add_argument(
         "--test",
+        default=os.environ.get('SM_CHANNEL_TEST'),
         help="Path to test data npz file"
     )
     parser.add_argument(
