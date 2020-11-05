@@ -111,12 +111,12 @@ def parse_args(arguments=None):
     )
     parser.add_argument(
         "--train",
-        default=os.environ.get('SM_TRAIN'),
+        default=os.environ.get('SM_CHANNEL_TRAIN'),
         help="Path to training npz data file"
     )
     parser.add_argument(
         "--validation",
-        default=os.environ.get('SM_VALIDATION'),
+        default=os.environ.get('SM_CHANNEL_VALIDATION'),
         help="Path to validation npz data file"
     )
     parser.add_argument(
@@ -139,6 +139,7 @@ def train(args, logger):
     logger.info("starting data preparation.")
     logger.info(f"loading training data from {args.train}")
     logger.info(f"loading validation data from {args.validation}")
+
 
     train_data = load_data(args.train)
     val_data = load_data(args.validation)
