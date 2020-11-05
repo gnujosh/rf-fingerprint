@@ -140,7 +140,6 @@ def train(args, logger):
     logger.info(f"loading training data from {args.train}")
     logger.info(f"loading validation data from {args.validation}")
 
-
     train_data = load_data(args.train)
     val_data = load_data(args.validation)
         
