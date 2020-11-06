@@ -267,7 +267,7 @@ def train(args, logger):
         batch_size=args.batch_size,
         epochs=args.epochs,
         shuffle=True,
-        verbose=1,
+        verbose=2,
         callbacks=callbacks,
     )
     logger.info("finished training.")
@@ -280,6 +280,11 @@ def train(args, logger):
     with open(metrics_filepath, "w") as file:
         file.write(json.dumps(hist.history))
 
+    #tf.keras.Model.save(model)
+    save_path = os.path.join(args.model_dir, "marconinet/1/")
+    logger.info("also saving to SaveModel format at {save_path}")
+    tf.saved_model.save(model, save_path)
+        
 #     # test best model
 #     logger.info("evaluating on test data.")
 #     bestmodel = keras.models.load_model(filepath)
